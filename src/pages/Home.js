@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import "./Home.css";
-import { motion } from "framer-motion";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -8,9 +7,7 @@ export default function Home() {
   return (
     <div className="finora-bg">
       <div className="finora-home-card">
-
         <div className="home-icons">
-          
           <span className="heart-icon">♡</span>
         </div>
 
@@ -21,13 +18,17 @@ export default function Home() {
         <h1 className="home-title">Finora</h1>
         <p className="home-subtitle">expense tracker</p>
 
-        
-
-        <button className="home-btn primary-btn" onClick={() => navigate("/login")}>
+        <button
+          className="home-btn primary-btn"
+          onClick={() => navigate("/login")}
+        >
           Login
         </button>
 
-        <button className="home-btn secondary-btn" onClick={() => navigate("/register")}>
+        <button
+          className="home-btn secondary-btn"
+          onClick={() => navigate("/register")}
+        >
           Create Account
         </button>
 
