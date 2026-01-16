@@ -31,7 +31,7 @@ export default function Dashboard() {
 
   // ✅ Shared axios instance
   const api = axios.create({
-    baseURL: "http://localhost:5000/api",
+    baseURL: "https://expense-tracker-backend-gvq2.onrender.com/api",
     headers: { Authorization: `Bearer ${token}` }
   });
 
