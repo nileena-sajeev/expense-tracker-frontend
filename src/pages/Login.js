@@ -38,7 +38,7 @@ export default function Login() {
   return (
     <div className="finora-bg">
       {/* top icons */}
-      <div className="top-left">☰</div>
+      
       <div className="top-right">♡</div>
 
       <div className="finora-card">
