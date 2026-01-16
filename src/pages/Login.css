@@ -1,0 +1,147 @@
+* {
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+/* full background */
+.finora-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #efe9ff, #ffd6e8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  padding: 30px;
+}
+
+/* floating circles */
+.finora-bg::before,
+.finora-bg::after {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+}
+
+.finora-bg::before {
+  top: 12%;
+  left: 10%;
+}
+
+.finora-bg::after {
+  bottom: 12%;
+  right: 12%;
+}
+
+/* top icons */
+.top-left,
+.top-right {
+  position: absolute;
+  top: 22px;
+  font-size: 22px;
+  opacity: 0.6;
+}
+
+.top-left {
+  left: 22px;
+}
+.top-right {
+  right: 22px;
+}
+
+/* ✅ MAIN CARD */
+.finora-card {
+  width: 100%;
+  max-width: 430px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 28px;
+  padding: 45px 35px;
+  text-align: center;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
+  position: relative;
+}
+
+/* icons */
+.cloud-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.piggy-icon {
+  font-size: 44px;
+  margin: 28px 0 10px;
+}
+
+/* title text */
+.title {
+  font-size: 42px;
+  font-weight: 700;
+  color: #6a5acd;
+  margin: 5px 0 6px;
+}
+
+.subtitle {
+  font-size: 14px;
+  opacity: 0.65;
+  margin-bottom: 26px;
+}
+
+/* ✅ FORM STACKED VERTICAL */
+.finora-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* inputs */
+.finora-card input {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(180, 180, 180, 0.35);
+  outline: none;
+  font-size: 15px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* buttons */
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 25px;
+  border: none;
+  background: #ffd8a8;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 15px;
+  transition: 0.2s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-1px);
+}
+
+.create-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 25px;
+  border: none;
+  background: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 15px;
+  margin-top: 12px;
+}
+
+/* footer */
+.footer {
+  margin-top: 22px;
+  font-size: 13px;
+  opacity: 0.6;
+}
