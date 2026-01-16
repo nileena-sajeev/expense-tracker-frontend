@@ -10,7 +10,6 @@ export default function Home() {
       <div className="finora-home-card">
 
         <div className="home-icons">
-          <span className="menu-icon">☰</span>
           <span className="heart-icon">♡</span>
         </div>
 
