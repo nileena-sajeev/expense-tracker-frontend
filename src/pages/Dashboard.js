@@ -32,16 +32,23 @@ export default function Dashboard() {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
-  // ✅ Shared axios (stable)
+  // ✅ Axios instance
   const api = useMemo(() => {
     return axios.create({
-      baseURL: API_URL + "/api",
-      headers: { Authorization: `Bearer ${token}` },
+      baseURL: `${API_URL}/api`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
   }, [token]);
 
-  // ✅ Build chart breakdown from expenses
+  // ✅ Build chart breakdown
   const buildChartData = useCallback((allExpenses) => {
+    if (!Array.isArray(allExpenses)) {
+      setChartData([]);
+      return;
+    }
+
     const map = {};
 
     allExpenses.forEach((e) => {
@@ -57,25 +64,37 @@ export default function Dashboard() {
     setChartData(final);
   }, []);
 
-  // ✅ refreshSummary stable
+  // ✅ Refresh summary
   const refreshSummary = useCallback(async () => {
-    const sum = await api.get(`/expenses/summary?_=${Date.now()}`);
-    setSummary({
-      total: Number(sum.data.total),
-      limit: Number(sum.data.limit),
-    });
+    try {
+      const sum = await api.get(`/expenses/summary?_=${Date.now()}`);
+
+      setSummary({
+        total: Number(sum.data.total || 0),
+        limit: Number(sum.data.limit || 0),
+      });
+    } catch (err) {
+      console.log("❌ Summary error:", err.response?.data || err.message);
+    }
   }, [api]);
 
-  // ✅ Load data
+  // ✅ Load expenses + summary
   useEffect(() => {
     const loadData = async () => {
       try {
-        const exp = await api.get("/expenses");
-        setExpenses(exp.data);
-        buildChartData(exp.data);
+        const expRes = await api.get("/expenses");
+
+        // ✅ SAFETY: backend might send array OR { expenses: [] }
+        const expData = Array.isArray(expRes.data)
+          ? expRes.data
+          : expRes.data.expenses || [];
+
+        setExpenses(expData);
+        buildChartData(expData);
+
         await refreshSummary();
       } catch (err) {
-        console.log("Load error:", err);
+        console.log("❌ Load error:", err.response?.data || err.message);
       }
     };
 
@@ -102,7 +121,7 @@ export default function Dashboard() {
       });
 
       setExpenses((prev) => {
-        const updated = [res.data, ...prev];
+        const updated = [res.data, ...(Array.isArray(prev) ? prev : [])];
         buildChartData(updated);
         return updated;
       });
@@ -111,7 +130,7 @@ export default function Dashboard() {
 
       await refreshSummary();
     } catch (err) {
-      console.log("❌ Add expense error:", err);
+      console.log("❌ Add expense error:", err.response?.data || err.message);
       alert(err.response?.data?.message || "Add expense failed");
     }
   };
@@ -122,14 +141,16 @@ export default function Dashboard() {
       await api.delete(`/expenses/${id}`);
 
       setExpenses((prev) => {
-        const updated = prev.filter((x) => x.id !== id);
+        const updated = (Array.isArray(prev) ? prev : []).filter(
+          (x) => (x._id || x.id) !== id
+        );
         buildChartData(updated);
         return updated;
       });
 
       await refreshSummary();
     } catch (err) {
-      console.log("❌ Delete error:", err);
+      console.log("❌ Delete error:", err.response?.data || err.message);
       alert("Delete failed");
     }
   };
@@ -143,12 +164,12 @@ export default function Dashboard() {
       setNewLimit("");
       await refreshSummary();
     } catch (err) {
-      console.log("❌ Limit update error:", err);
+      console.log("❌ Limit update error:", err.response?.data || err.message);
       alert("Limit update failed");
     }
   };
 
-  // ✅ Pie chart data (now Pie + chartData is USED ✅)
+  // ✅ Pie chart colors
   const pastelColors = ["#f7b2bd", "#fcd5a5", "#b8e0d2", "#cdb4db", "#a2d2ff"];
 
   const pieData = {
@@ -194,16 +215,6 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* ✅ summary USED ✅ */}
-            <div className="summary-box">
-              <p>
-                <b>Total spent:</b> ₹{summary.total}
-              </p>
-              <p>
-                <b>Monthly limit:</b> ₹{summary.limit}
-              </p>
-            </div>
-
             <h3>Monthly Limit</h3>
 
             <form onSubmit={updateLimit}>
@@ -217,6 +228,51 @@ export default function Dashboard() {
                 Save Limit
               </button>
             </form>
+
+            <div className="summary-box">
+              <p>
+                <b>Total spent this month:</b> ₹{summary.total}
+              </p>
+              <p>
+                <b>Your limit:</b> ₹{summary.limit}
+              </p>
+            </div>
+
+            {/* ✅ Progress Bar */}
+            {summary.limit > 0 && (
+              <div className="progress-wrapper">
+                <div className="progress-labels">
+                  <span>0</span>
+                  <span>₹{summary.limit}</span>
+                </div>
+
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width: `${Math.min(
+                        (summary.total / summary.limit) * 100,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="progress-text">
+                  {Math.min((summary.total / summary.limit) * 100, 100).toFixed(
+                    0
+                  )}
+                  % used
+                </p>
+              </div>
+            )}
+
+            {summary.limit > 0 && summary.total > summary.limit && (
+              <p className="limit-warning">
+                🤯 Oops! You crossed your spending limit. <br />
+                Do you regret this expense?
+              </p>
+            )}
 
             {/* ✅ CHART */}
             <div className="chart-box">
@@ -236,7 +292,6 @@ export default function Dashboard() {
           <div className="finora-card">
             <h3>Add Expense</h3>
 
-            {/* ✅ handleSubmit USED ✅ */}
             <form onSubmit={handleSubmit}>
               <input
                 name="title"
@@ -278,15 +333,14 @@ export default function Dashboard() {
                 <p className="empty-text">No expenses yet</p>
               ) : (
                 expenses.map((e) => (
-                  <div className="expense" key={e.id}>
+                  <div className="expense" key={e._id || e.id}>
                     <span className="expense-text">
                       {e.title} — ₹{e.amount} — {e.category}
                     </span>
 
-                    {/* ✅ deleteExpense USED ✅ */}
                     <button
                       className="secondary small-btn"
-                      onClick={() => deleteExpense(e.id)}
+                      onClick={() => deleteExpense(e._id || e.id)}
                     >
                       Delete
                     </button>
