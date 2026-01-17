@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
@@ -19,7 +19,6 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState({ total: 0, limit: 0 });
   const [newLimit, setNewLimit] = useState("");
-
   const [chartData, setChartData] = useState([]);
 
   const [form, setForm] = useState({
@@ -33,7 +32,7 @@ export default function Dashboard() {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
-  // ✅ Shared axios (useMemo avoids ESLint issues)
+  // ✅ Shared axios (stable)
   const api = useMemo(() => {
     return axios.create({
       baseURL: API_URL + "/api",
@@ -42,8 +41,9 @@ export default function Dashboard() {
   }, [token]);
 
   // ✅ Build chart breakdown from expenses
-  const buildChartData = (allExpenses) => {
+  const buildChartData = useCallback((allExpenses) => {
     const map = {};
+
     allExpenses.forEach((e) => {
       const cat = e.category || "Other";
       map[cat] = (map[cat] || 0) + Number(e.amount || 0);
@@ -55,18 +55,18 @@ export default function Dashboard() {
     }));
 
     setChartData(final);
-  };
+  }, []);
 
-  // ✅ Refresh summary
-  const refreshSummary = async () => {
+  // ✅ FIX: make refreshSummary stable (useCallback)
+  const refreshSummary = useCallback(async () => {
     const sum = await api.get(`/expenses/summary?_=${Date.now()}`);
     setSummary({
       total: Number(sum.data.total),
       limit: Number(sum.data.limit),
     });
-  };
+  }, [api]);
 
-  // ✅ Load data once
+  // ✅ Load data once (NO ESLINT WARNING)
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -81,7 +81,7 @@ export default function Dashboard() {
     };
 
     loadData();
-  }, [api]);
+  }, [api, refreshSummary, buildChartData]);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -149,7 +149,7 @@ export default function Dashboard() {
     }
   };
 
-  // ✅ Pastel colors for pie chart
+  // ✅ Pie chart colors
   const pastelColors = ["#f7b2bd", "#fcd5a5", "#b8e0d2", "#cdb4db", "#a2d2ff"];
 
   const pieData = {
@@ -203,6 +203,7 @@ export default function Dashboard() {
                 value={newLimit}
                 onChange={(e) => setNewLimit(e.target.value)}
               />
+
               <button className="primary" type="submit">
                 Save Limit
               </button>
@@ -227,6 +228,7 @@ export default function Dashboard() {
             {/* ✅ CHART */}
             <div className="chart-box">
               <h3 style={{ marginTop: "20px" }}>This Month Breakdown</h3>
+
               {chartData.length === 0 ? (
                 <p className="empty-text">No chart data yet</p>
               ) : (
