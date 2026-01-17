@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import { FiLogOut } from "react-icons/fi";
+baseURL: API_URL
 
 // ✅ Chart.js setup
 import { Pie } from "react-chartjs-2";

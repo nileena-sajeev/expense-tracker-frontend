@@ -2,6 +2,9 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
+import { API_URL } from "../config";
+
+await axios.post(`${API_URL}/auth/login`, form);
 
 
 export default function Login() {
