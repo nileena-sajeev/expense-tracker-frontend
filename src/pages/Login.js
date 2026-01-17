@@ -2,20 +2,18 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
-import { API_URL } from "../config";
 
-await axios.post(`${API_URL}/auth/login`, form);
-
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
-  const handleChange = e =>
+  const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!form.email || !form.password) {
@@ -25,10 +23,9 @@ export default function Login() {
 
     try {
       setLoading(true);
-      const res = await axios.post(
-        "https://expense-tracker-backend-gvq2.onrender.com/api/auth/login",
-        form
-      );
+
+      const res = await axios.post(`${API_URL}/api/auth/login`, form);
+
       localStorage.setItem("token", res.data.token);
       navigate("/dashboard");
     } catch (err) {
@@ -40,8 +37,6 @@ export default function Login() {
 
   return (
     <div className="finora-bg">
-      {/* top icons */}
-      
       <div className="top-right">♡</div>
 
       <div className="finora-card">
@@ -49,8 +44,6 @@ export default function Login() {
 
         <h1 className="finora-title">Finora</h1>
         <p className="finora-subtitle">manage your money gently</p>
-
-        
 
         <form onSubmit={handleSubmit}>
           <input
@@ -70,15 +63,12 @@ export default function Login() {
             onChange={handleChange}
           />
 
-          <button className="login-btn" disabled={loading}>
+          <button className="login-btn" disabled={loading} type="submit">
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
-        <button
-          className="create-btn"
-          onClick={() => navigate("/register")}
-        >
+        <button className="create-btn" onClick={() => navigate("/register")}>
           Create Account
         </button>
 

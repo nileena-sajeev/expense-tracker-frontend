@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import { FiLogOut } from "react-icons/fi";
-baseURL: API_URL
 
 // ✅ Chart.js setup
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+// ✅ Netlify ENV support
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -17,29 +19,31 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState({ total: 0, limit: 0 });
   const [newLimit, setNewLimit] = useState("");
+
   const [chartData, setChartData] = useState([]);
 
   const [form, setForm] = useState({
     title: "",
     amount: "",
-    category: "Food"
+    category: "Food",
   });
 
   // ✅ Redirect if not logged in
   useEffect(() => {
-    if (!token) navigate("/");
+    if (!token) navigate("/login");
   }, [token, navigate]);
 
-  // ✅ Shared axios instance
-  const api = axios.create({
-    baseURL: "https://expense-tracker-backend-gvq2.onrender.com/api",
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  // ✅ Shared axios (useMemo avoids ESLint issues)
+  const api = useMemo(() => {
+    return axios.create({
+      baseURL: API_URL + "/api",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }, [token]);
 
   // ✅ Build chart breakdown from expenses
   const buildChartData = (allExpenses) => {
     const map = {};
-
     allExpenses.forEach((e) => {
       const cat = e.category || "Other";
       map[cat] = (map[cat] || 0) + Number(e.amount || 0);
@@ -47,22 +51,22 @@ export default function Dashboard() {
 
     const final = Object.keys(map).map((key) => ({
       category: key,
-      total: map[key]
+      total: map[key],
     }));
 
     setChartData(final);
   };
 
-  // ✅ Refresh summary (total + limit)
+  // ✅ Refresh summary
   const refreshSummary = async () => {
     const sum = await api.get(`/expenses/summary?_=${Date.now()}`);
     setSummary({
       total: Number(sum.data.total),
-      limit: Number(sum.data.limit)
+      limit: Number(sum.data.limit),
     });
   };
 
-  // ✅ Load data once (expenses + summary + chart)
+  // ✅ Load data once
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -77,13 +81,12 @@ export default function Dashboard() {
     };
 
     loadData();
-    // eslint-disable-next-line
-  }, [token]);
+  }, [api]);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
-  // ✅ ADD EXPENSE (instant UI update)
+  // ✅ ADD EXPENSE
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -96,7 +99,7 @@ export default function Dashboard() {
       const res = await api.post("/expenses", {
         title: form.title.trim(),
         amount: Number(form.amount),
-        category: form.category
+        category: form.category,
       });
 
       setExpenses((prev) => {
@@ -114,7 +117,7 @@ export default function Dashboard() {
     }
   };
 
-  // ✅ DELETE EXPENSE (instant UI update)
+  // ✅ DELETE EXPENSE
   const deleteExpense = async (id) => {
     try {
       await api.delete(`/expenses/${id}`);
@@ -139,7 +142,6 @@ export default function Dashboard() {
     try {
       await api.post("/auth/limit", { limit: newLimit });
       setNewLimit("");
-
       await refreshSummary();
     } catch (err) {
       console.log("❌ Limit update error:", err);
@@ -148,13 +150,7 @@ export default function Dashboard() {
   };
 
   // ✅ Pastel colors for pie chart
-  const pastelColors = [
-    "#f7b2bd", // pink
-    "#fcd5a5", // peach
-    "#b8e0d2", // mint
-    "#cdb4db", // lavender
-    "#a2d2ff" // sky blue
-  ];
+  const pastelColors = ["#f7b2bd", "#fcd5a5", "#b8e0d2", "#cdb4db", "#a2d2ff"];
 
   const pieData = {
     labels: chartData.map((x) => x.category),
@@ -166,18 +162,16 @@ export default function Dashboard() {
           (_, i) => pastelColors[i % pastelColors.length]
         ),
         borderColor: "#ffffff",
-        borderWidth: 2
-      }
-    ]
+        borderWidth: 2,
+      },
+    ],
   };
 
   const pieOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        position: "top"
-      }
-    }
+      legend: { position: "top" },
+    },
   };
 
   return (
@@ -194,7 +188,7 @@ export default function Dashboard() {
                 title="Logout"
                 onClick={() => {
                   localStorage.removeItem("token");
-                  navigate("/");
+                  navigate("/login");
                 }}
               >
                 <FiLogOut size={18} />
@@ -209,7 +203,6 @@ export default function Dashboard() {
                 value={newLimit}
                 onChange={(e) => setNewLimit(e.target.value)}
               />
-
               <button className="primary" type="submit">
                 Save Limit
               </button>
@@ -224,35 +217,6 @@ export default function Dashboard() {
               </p>
             </div>
 
-            {/* ✅ Progress Bar */}
-            {summary.limit > 0 && (
-              <div className="progress-wrapper">
-                <div className="progress-labels">
-                  <span>0</span>
-                  <span>₹{summary.limit}</span>
-                </div>
-
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{
-                      width: `${Math.min(
-                        (summary.total / summary.limit) * 100,
-                        100
-                      )}%`
-                    }}
-                  />
-                </div>
-
-                <p className="progress-text">
-                  {Math.min((summary.total / summary.limit) * 100, 100).toFixed(
-                    0
-                  )}
-                  % used
-                </p>
-              </div>
-            )}
-
             {summary.limit > 0 && summary.total > summary.limit && (
               <p className="limit-warning">
                 🤯 Oops! You crossed your spending limit. <br />
@@ -263,7 +227,6 @@ export default function Dashboard() {
             {/* ✅ CHART */}
             <div className="chart-box">
               <h3 style={{ marginTop: "20px" }}>This Month Breakdown</h3>
-
               {chartData.length === 0 ? (
                 <p className="empty-text">No chart data yet</p>
               ) : (
