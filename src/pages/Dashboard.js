@@ -4,12 +4,13 @@ import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import { FiLogOut } from "react-icons/fi";
 
+// ✅ Chart.js setup
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-// ✅ HARDCODE backend URL (NO localhost fallback)
-const API_URL = "https://expense-tracker-backend-gvq2.onrender.com";
+// ✅ Netlify ENV support
+const API_URL = process.env.REACT_APP_API_URL || "https://finoraaa.netlify.app/";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -26,11 +27,12 @@ export default function Dashboard() {
     category: "Food",
   });
 
-  // Redirect if not logged in
+  // ✅ Redirect if not logged in
   useEffect(() => {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
+  // ✅ Shared axios (stable)
   const api = useMemo(() => {
     return axios.create({
       baseURL: API_URL + "/api",
@@ -38,74 +40,263 @@ export default function Dashboard() {
     });
   }, [token]);
 
+  // ✅ Build chart breakdown from expenses
   const buildChartData = useCallback((allExpenses) => {
     const map = {};
+
     allExpenses.forEach((e) => {
       const cat = e.category || "Other";
       map[cat] = (map[cat] || 0) + Number(e.amount || 0);
     });
 
-    setChartData(
-      Object.keys(map).map((key) => ({
-        category: key,
-        total: map[key],
-      }))
-    );
+    const final = Object.keys(map).map((key) => ({
+      category: key,
+      total: map[key],
+    }));
+
+    setChartData(final);
   }, []);
 
+  // ✅ refreshSummary stable
   const refreshSummary = useCallback(async () => {
-    const sum = await api.get("/expenses/summary");
+    const sum = await api.get(`/expenses/summary?_=${Date.now()}`);
     setSummary({
       total: Number(sum.data.total),
       limit: Number(sum.data.limit),
     });
   }, [api]);
 
+  // ✅ Load data
   useEffect(() => {
     const loadData = async () => {
-      const exp = await api.get("/expenses");
-      setExpenses(exp.data);
-      buildChartData(exp.data);
-      await refreshSummary();
+      try {
+        const exp = await api.get("/expenses");
+        setExpenses(exp.data);
+        buildChartData(exp.data);
+        await refreshSummary();
+      } catch (err) {
+        console.log("Load error:", err);
+      }
     };
+
     loadData();
   }, [api, refreshSummary, buildChartData]);
 
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+
+  // ✅ ADD EXPENSE
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await api.post("/expenses", form);
-    const updated = [res.data, ...expenses];
-    setExpenses(updated);
-    buildChartData(updated);
-    setForm({ title: "", amount: "", category: "Food" });
-    await refreshSummary();
+
+    try {
+      if (!form.title || !form.amount) {
+        alert("Please enter title & amount");
+        return;
+      }
+
+      const res = await api.post("/expenses", {
+        title: form.title.trim(),
+        amount: Number(form.amount),
+        category: form.category,
+      });
+
+      setExpenses((prev) => {
+        const updated = [res.data, ...prev];
+        buildChartData(updated);
+        return updated;
+      });
+
+      setForm({ title: "", amount: "", category: "Food" });
+
+      await refreshSummary();
+    } catch (err) {
+      console.log("❌ Add expense error:", err);
+      alert(err.response?.data?.message || "Add expense failed");
+    }
   };
 
+  // ✅ DELETE EXPENSE
   const deleteExpense = async (id) => {
-    await api.delete(`/expenses/${id}`);
-    const updated = expenses.filter((e) => e.id !== id);
-    setExpenses(updated);
-    buildChartData(updated);
-    await refreshSummary();
+    try {
+      await api.delete(`/expenses/${id}`);
+
+      setExpenses((prev) => {
+        const updated = prev.filter((x) => x.id !== id);
+        buildChartData(updated);
+        return updated;
+      });
+
+      await refreshSummary();
+    } catch (err) {
+      console.log("❌ Delete error:", err);
+      alert("Delete failed");
+    }
   };
 
+  // ✅ UPDATE LIMIT
   const updateLimit = async (e) => {
     e.preventDefault();
-    await api.post("/auth/limit", { limit: newLimit });
-    setNewLimit("");
-    await refreshSummary();
+
+    try {
+      await api.post("/auth/limit", { limit: newLimit });
+      setNewLimit("");
+      await refreshSummary();
+    } catch (err) {
+      console.log("❌ Limit update error:", err);
+      alert("Limit update failed");
+    }
+  };
+
+  // ✅ Pie chart data (now Pie + chartData is USED ✅)
+  const pastelColors = ["#f7b2bd", "#fcd5a5", "#b8e0d2", "#cdb4db", "#a2d2ff"];
+
+  const pieData = {
+    labels: chartData.map((x) => x.category),
+    datasets: [
+      {
+        label: "Expenses",
+        data: chartData.map((x) => x.total),
+        backgroundColor: chartData.map(
+          (_, i) => pastelColors[i % pastelColors.length]
+        ),
+        borderColor: "#ffffff",
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  const pieOptions = {
+    responsive: true,
+    plugins: {
+      legend: { position: "top" },
+    },
   };
 
   return (
-    <div className="finora-bg">
-      <button
-        onClick={() => {
-          localStorage.removeItem("token");
-          navigate("/login");
-        }}
-      >
-        <FiLogOut />
-      </button>
+    <div className="finora-bg fade-page">
+      <div className="dashboard-shell">
+        {/* ✅ LEFT PANEL */}
+        <div className="dashboard-left">
+          <div className="finora-card">
+            <div className="dash-top">
+              <h2>Dashboard</h2>
+
+              <button
+                className="logout-float"
+                title="Logout"
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  navigate("/login");
+                }}
+              >
+                <FiLogOut size={18} />
+              </button>
+            </div>
+
+            {/* ✅ summary USED ✅ */}
+            <div className="summary-box">
+              <p>
+                <b>Total spent:</b> ₹{summary.total}
+              </p>
+              <p>
+                <b>Monthly limit:</b> ₹{summary.limit}
+              </p>
+            </div>
+
+            <h3>Monthly Limit</h3>
+
+            <form onSubmit={updateLimit}>
+              <input
+                placeholder="Enter your monthly limit"
+                value={newLimit}
+                onChange={(e) => setNewLimit(e.target.value)}
+              />
+
+              <button className="primary" type="submit">
+                Save Limit
+              </button>
+            </form>
+
+            {/* ✅ CHART */}
+            <div className="chart-box">
+              <h3 style={{ marginTop: "20px" }}>This Month Breakdown</h3>
+
+              {chartData.length === 0 ? (
+                <p className="empty-text">No chart data yet</p>
+              ) : (
+                <Pie data={pieData} options={pieOptions} />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ✅ RIGHT PANEL */}
+        <div className="dashboard-right">
+          <div className="finora-card">
+            <h3>Add Expense</h3>
+
+            {/* ✅ handleSubmit USED ✅ */}
+            <form onSubmit={handleSubmit}>
+              <input
+                name="title"
+                placeholder="Title"
+                value={form.title}
+                onChange={handleChange}
+                required
+              />
+
+              <input
+                name="amount"
+                placeholder="Amount"
+                value={form.amount}
+                onChange={handleChange}
+                required
+              />
+
+              <select
+                name="category"
+                value={form.category}
+                onChange={handleChange}
+              >
+                <option>Food</option>
+                <option>Travel</option>
+                <option>Shopping</option>
+                <option>Bills</option>
+                <option>Other</option>
+              </select>
+
+              <button className="primary" type="submit">
+                Add Expense
+              </button>
+            </form>
+
+            <h3 style={{ marginTop: "18px" }}>Your Expenses</h3>
+
+            <div className="expense-list">
+              {expenses.length === 0 ? (
+                <p className="empty-text">No expenses yet</p>
+              ) : (
+                expenses.map((e) => (
+                  <div className="expense" key={e.id}>
+                    <span className="expense-text">
+                      {e.title} — ₹{e.amount} — {e.category}
+                    </span>
+
+                    {/* ✅ deleteExpense USED ✅ */}
+                    <button
+                      className="secondary small-btn"
+                      onClick={() => deleteExpense(e.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
