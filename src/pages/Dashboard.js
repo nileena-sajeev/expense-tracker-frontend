@@ -9,8 +9,10 @@ import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-// ✅ Netlify ENV support
-const API_URL = process.env.REACT_APP_API_URL || "https://finoraaa.netlify.app/";
+// ✅ MUST be BACKEND URL (Render)
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  "https://expense-tracker-backend-gvq2.onrender.com";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -32,7 +34,7 @@ export default function Dashboard() {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
-  // ✅ Axios instance
+  // ✅ Axios instance (with token)
   const api = useMemo(() => {
     return axios.create({
       baseURL: `${API_URL}/api`,
@@ -84,7 +86,6 @@ export default function Dashboard() {
       try {
         const expRes = await api.get("/expenses");
 
-        // ✅ SAFETY: backend might send array OR { expenses: [] }
         const expData = Array.isArray(expRes.data)
           ? expRes.data
           : expRes.data.expenses || [];
@@ -160,12 +161,12 @@ export default function Dashboard() {
     e.preventDefault();
 
     try {
-      await api.post("/auth/limit", { limit: newLimit });
+      await api.post("/auth/limit", { limit: Number(newLimit) });
       setNewLimit("");
       await refreshSummary();
     } catch (err) {
       console.log("❌ Limit update error:", err.response?.data || err.message);
-      alert("Limit update failed");
+      alert(err.response?.data?.message || "Limit update failed");
     }
   };
 
